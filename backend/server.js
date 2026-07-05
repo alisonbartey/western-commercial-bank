@@ -21,7 +21,7 @@ const allowedOrigins = [
   'http://localhost:5173',
   'http://127.0.0.1:5173',
   'http://localhost:3000',
-  'https://your-frontend.vercel.app' // 🔴 CHANGE THIS AFTER DEPLOYMENT
+  'https://western-commercial-bank-beta.vercel.app' // 🔴 CHANGE THIS AFTER DEPLOYMENT
 ];
 
 app.use(
