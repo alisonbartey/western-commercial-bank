@@ -1,0 +1,100 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Western Commercial Bank - Custom Styles */
+:root {
+  --navy: #0F172A;
+  --slate: #64748B;
+}
+
+body {
+  font-feature-settings: "kern" "tnum" "ss01";
+}
+
+/* Professional Card Styling */
+.card {
+  @apply bg-white rounded-2xl shadow-sm border border-slate-200;
+}
+
+.card-hover {
+  @apply transition-all duration-200 hover:shadow-md hover:border-slate-300;
+}
+
+/* Bottom Navigation - Floating Mobile Tab Bar */
+.bottom-nav {
+  @apply fixed bottom-4 left-1/2 -translate-x-1/2 z-50 
+         bg-white/95 backdrop-blur-lg border border-slate-200 
+         shadow-xl rounded-3xl px-2 py-1.5;
+  box-shadow: 0 10px 15px -3px rgb(15 23 42 / 0.1), 
+              0 4px 6px -4px rgb(15 23 42 / 0.1);
+}
+
+/* OTP Input Styling */
+.otp-input {
+  @apply w-12 h-14 text-center text-2xl font-semibold border-2 border-slate-300 
+         rounded-xl focus:border-navy focus:ring-2 focus:ring-navy/20 
+         transition-all outline-none bg-white;
+}
+
+.otp-input.filled {
+  @apply border-navy bg-navy/5;
+}
+
+/* Modern Button Styles */
+.btn-primary {
+  @apply bg-navy hover:bg-navy-600 text-white font-semibold py-3.5 px-8 
+         rounded-2xl transition-all active:scale-[0.985] disabled:opacity-60 
+         disabled:cursor-not-allowed flex items-center justify-center gap-2;
+}
+
+.btn-secondary {
+  @apply bg-white hover:bg-slate-50 text-navy border border-slate-300 
+         font-semibold py-3.5 px-6 rounded-2xl transition-all;
+}
+
+.btn-danger {
+  @apply bg-red-600 hover:bg-red-700 text-white font-semibold py-3 px-6 
+         rounded-2xl transition-all;
+}
+
+/* Tab Active State */
+.tab-active {
+  @apply text-navy border-b-2 border-navy font-semibold;
+}
+
+/* Transaction Row */
+.txn-row {
+  @apply flex items-center justify-between py-4 border-b border-slate-100 last:border-b-0;
+}
+
+/* Admin Table */
+.admin-table th {
+  @apply bg-slate-100 text-slate-600 font-semibold text-xs uppercase tracking-wider px-4 py-3 text-left;
+}
+
+.admin-table td {
+  @apply px-4 py-4 text-sm border-b border-slate-100;
+}
+
+/* Floating Action */
+.fab {
+  @apply fixed bottom-20 right-6 z-40 bg-navy text-white p-4 rounded-full 
+         shadow-lg active:scale-95 transition-transform;
+}
+
+/* Responsive adjustments */
+@media (max-width: 640px) {
+  .otp-input {
+    @apply w-11 h-12 text-xl;
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out;
+}

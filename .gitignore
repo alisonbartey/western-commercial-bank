@@ -1,0 +1,37 @@
+# Dependencies
+node_modules/
+
+# Environment & secrets
+.env
+.env.local
+.env.*.local
+backend/.env
+
+# SQLite database (local dev data)
+backend/western_bank.db
+backend/western_bank.db-shm
+backend/western_bank.db-wal
+
+# Build output
+frontend/dist/
+dist/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE / editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Test / coverage
+coverage/
