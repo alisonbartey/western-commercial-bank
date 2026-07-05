@@ -203,7 +203,7 @@ export default function TransfersTab() {
               type="text"
               value={recipient}
               onChange={(e) => setRecipient(e.target.value)}
-              placeholder="e.g. amara_eze"
+              placeholder="e.g. john_deo1"
               className="w-full border border-slate-300 focus:border-navy rounded-2xl px-5 py-3.5 text-lg placeholder:text-slate-400 outline-none focus:ring-2 focus:ring-navy/10"
               required
             />
