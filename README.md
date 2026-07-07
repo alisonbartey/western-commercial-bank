@@ -28,7 +28,7 @@ A secure, mobile-first digital banking platform with strict RBAC, administrative
 ### Business Logic
 - Secure transfers between users (prevents self-transfer, insufficient funds, non-existent recipient).
 - Transaction ledger with timestamps and descriptions.
-- Clean SQLite persistence (file-based, production-friendly for small-mid scale or easy migration).
+- Prisma ORM with PostgreSQL-compatible schema (Neon + Render friendly).
 
 ## 🛠 Tech Stack
 
@@ -41,7 +41,7 @@ A secure, mobile-first digital banking platform with strict RBAC, administrative
 
 **Backend**
 - Node.js + Express
-- better-sqlite3 (fast, zero-config embedded DB)
+- Prisma ORM + PostgreSQL
 - bcryptjs (password hashing)
 - jsonwebtoken (secure sessions)
 - CORS configured for development
@@ -53,7 +53,8 @@ A secure, mobile-first digital banking platform with strict RBAC, administrative
 cd backend
 npm install
 cp .env.example .env
-# (Optional) Edit JWT_SECRET in .env
+# Set DATABASE_URL to your local Postgres/Neon connection string
+npm run prisma:migrate
 node server.js
 ```
 Backend runs on **http://localhost:5000**
@@ -86,7 +87,7 @@ Open http://localhost:5173 — you will land on the professional Sign In screen.
 9. Perform a transfer between users.
 
 ## Production Recommendations
-- Replace SQLite with PostgreSQL or MySQL + proper migrations (Prisma/TypeORM recommended).
+- Use Neon/PostgreSQL with `npm run prisma:deploy` during deployment.
 - Add refresh token rotation + short-lived access tokens.
 - Implement rate limiting (express-rate-limit) on auth endpoints.
 - Add input validation (zod + express-validator).
@@ -101,7 +102,8 @@ Open http://localhost:5173 — you will land on the professional Sign In screen.
 western-commercial-bank/
 ├── backend/
 │   ├── server.js              # Express entry + middleware
-│   ├── db.js                  # SQLite schema + seed logic
+│   ├── db.js                  # Prisma query layer + seed logic
+│   ├── prisma/schema.prisma   # Prisma schema
 │   ├── middleware/auth.js     # JWT + RBAC guards
 │   ├── routes/
 │   │   ├── auth.js            # login, verify-otp

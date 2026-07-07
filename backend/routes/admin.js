@@ -1,6 +1,6 @@
 import express from 'express';
 import bcrypt from 'bcryptjs';
-import db, { userQueries, transactionQueries } from '../db.js';
+import { userQueries, transactionQueries } from '../db.js';
 import {
   authenticateToken,
   requireAdmin,
@@ -13,11 +13,11 @@ const router = express.Router();
 router.use(authenticateToken);
 router.use(requireAdminOrModerator);
 
-function getManageableUsers(req) {
+async function getManageableUsers(req) {
   if (req.user.role === 'admin') {
-    return userQueries.getAllUsers();
+    return await userQueries.getAllUsers();
   }
-  return userQueries.getUsersByModerator(req.user.id);
+  return await userQueries.getUsersByModerator(req.user.id);
 }
 
 function assertCanManage(req, res, targetUser) {
@@ -38,9 +38,9 @@ function assertCanManage(req, res, targetUser) {
 /**
  * GET /api/admin/users
  */
-router.get('/users', (req, res) => {
+router.get('/users', async (req, res) => {
   try {
-    const users = getManageableUsers(req);
+    const users = await getManageableUsers(req);
     const safeUsers = users.map((u) => ({
       ...u,
       is_restricted: !!u.is_restricted,
@@ -57,9 +57,9 @@ router.get('/users', (req, res) => {
 /**
  * GET /api/admin/moderators (admin only)
  */
-router.get('/moderators', requireAdmin, (req, res) => {
+router.get('/moderators', requireAdmin, async (req, res) => {
   try {
-    const moderators = userQueries.getModerators();
+    const moderators = await userQueries.getModerators();
     res.json({ success: true, moderators });
   } catch (error) {
     res.status(500).json({ success: false, error: 'Failed to fetch moderators.' });
@@ -111,7 +111,7 @@ router.post('/users', async (req, res) => {
       if (req.user.role === 'moderator') {
         resolvedManagedBy = req.user.id;
       } else if (managed_by_id) {
-        const moderator = userQueries.findById(parseInt(managed_by_id, 10));
+        const moderator = await userQueries.findById(parseInt(managed_by_id, 10));
         if (!moderator || moderator.role !== 'moderator') {
           return res.status(400).json({ success: false, error: 'Invalid moderator assignment.' });
         }
@@ -120,15 +120,15 @@ router.post('/users', async (req, res) => {
     }
 
     const existing =
-      userQueries.findByUsernameOrEmail(username) ||
-      userQueries.findByUsernameOrEmail(email);
+      (await userQueries.findByUsernameOrEmail(username)) ||
+      (await userQueries.findByUsernameOrEmail(email));
     if (existing) {
       return res.status(409).json({ success: false, error: 'Username or email already exists.' });
     }
 
     const password_hash = await bcrypt.hash(password, 12);
 
-    const newUser = userQueries.createUser({
+    const newUser = await userQueries.createUser({
       username: username.trim().toLowerCase(),
       email: email.trim().toLowerCase(),
       password_hash,
@@ -138,17 +138,8 @@ router.post('/users', async (req, res) => {
     });
 
     if (resolvedManagedBy) {
-      userQueries.assignModerator(newUser.id, resolvedManagedBy);
+      await userQueries.assignModerator(newUser.id, resolvedManagedBy);
     }
-
-    db.prepare(`
-      UPDATE users
-      SET account_number = ?, routing_number = COALESCE(routing_number, '121000248')
-      WHERE id = ? AND (account_number IS NULL OR account_number = '')
-    `).run(
-      String(Math.floor(100000000000 + Math.random() * 900000000000)),
-      newUser.id
-    );
 
     let seededTransactions = [];
     if (
@@ -166,7 +157,7 @@ router.post('/users', async (req, res) => {
         }));
 
       if (validTxns.length > 0) {
-        seededTransactions = transactionQueries.createSeedTransactions(newUser.id, validTxns);
+        seededTransactions = await transactionQueries.createSeedTransactions(newUser.id, validTxns);
       }
     }
 
@@ -195,7 +186,7 @@ router.post('/users', async (req, res) => {
 /**
  * PUT /api/admin/users/:id/balance
  */
-router.put('/users/:id/balance', (req, res) => {
+router.put('/users/:id/balance', async (req, res) => {
   try {
     const userId = parseInt(req.params.id, 10);
     const { amount, operation = 'credit' } = req.body;
@@ -207,7 +198,7 @@ router.put('/users/:id/balance', (req, res) => {
       });
     }
 
-    const user = userQueries.findById(userId);
+    const user = await userQueries.findById(userId);
     if (!assertCanManage(req, res, user)) return;
 
     let newBalance;
@@ -222,7 +213,7 @@ router.put('/users/:id/balance', (req, res) => {
       return res.status(400).json({ success: false, error: 'Operation must be "credit" or "debit".' });
     }
 
-    userQueries.updateBalance(userId, newBalance);
+    await userQueries.updateBalance(userId, newBalance);
     console.log(`💰 Balance ${operation} for ${user.username}: $${amount} → New balance: $${newBalance}`);
 
     res.json({
@@ -244,15 +235,15 @@ router.put('/users/:id/balance', (req, res) => {
 /**
  * PUT /api/admin/users/:id/restrict
  */
-router.put('/users/:id/restrict', (req, res) => {
+router.put('/users/:id/restrict', async (req, res) => {
   try {
     const userId = parseInt(req.params.id, 10);
     const { restricted = true } = req.body;
 
-    const user = userQueries.findById(userId);
+    const user = await userQueries.findById(userId);
     if (!assertCanManage(req, res, user)) return;
 
-    userQueries.setRestricted(userId, !!restricted);
+    await userQueries.setRestricted(userId, !!restricted);
 
     res.json({
       success: true,
@@ -274,24 +265,24 @@ router.put('/users/:id/restrict', (req, res) => {
 /**
  * PUT /api/admin/users/:id/assign-moderator (admin only)
  */
-router.put('/users/:id/assign-moderator', requireAdmin, (req, res) => {
+router.put('/users/:id/assign-moderator', requireAdmin, async (req, res) => {
   try {
     const userId = parseInt(req.params.id, 10);
     const { moderator_id } = req.body;
 
-    const user = userQueries.findById(userId);
+    const user = await userQueries.findById(userId);
     if (!user || user.role !== 'user') {
       return res.status(404).json({ success: false, error: 'Customer account not found.' });
     }
 
     if (moderator_id) {
-      const moderator = userQueries.findById(parseInt(moderator_id, 10));
+      const moderator = await userQueries.findById(parseInt(moderator_id, 10));
       if (!moderator || moderator.role !== 'moderator') {
         return res.status(400).json({ success: false, error: 'Invalid moderator.' });
       }
-      userQueries.assignModerator(userId, moderator.id);
+      await userQueries.assignModerator(userId, moderator.id);
     } else {
-      userQueries.assignModerator(userId, null);
+      await userQueries.assignModerator(userId, null);
     }
 
     res.json({
@@ -307,11 +298,11 @@ router.put('/users/:id/assign-moderator', requireAdmin, (req, res) => {
 /**
  * GET /api/admin/otps
  */
-router.get('/otps', (req, res) => {
+router.get('/otps', async (req, res) => {
   try {
-    const activeOtps = userQueries.getActiveOtps();
+    const activeOtps = await userQueries.getActiveOtps();
     const manageableIds = new Set(
-      getManageableUsers(req)
+      (await getManageableUsers(req))
         .filter((u) => u.role === 'user')
         .map((u) => u.id)
     );
@@ -351,9 +342,9 @@ router.get('/otps', (req, res) => {
 /**
  * GET /api/admin/dashboard-stats
  */
-router.get('/dashboard-stats', (req, res) => {
+router.get('/dashboard-stats', async (req, res) => {
   try {
-    const users = getManageableUsers(req);
+    const users = await getManageableUsers(req);
     const customerUsers = users.filter((u) => u.role === 'user');
     const totalBalance = customerUsers.reduce((sum, u) => sum + (u.balance || 0), 0);
     const restrictedCount = customerUsers.filter((u) => u.is_restricted).length;
@@ -364,7 +355,7 @@ router.get('/dashboard-stats', (req, res) => {
         total_users: customerUsers.length,
         total_system_balance: totalBalance,
         restricted_accounts: restrictedCount,
-        active_otps_count: userQueries.getActiveOtps().length,
+        active_otps_count: (await userQueries.getActiveOtps()).length,
       },
     });
   } catch (error) {

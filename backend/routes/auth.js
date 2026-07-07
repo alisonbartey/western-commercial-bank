@@ -22,9 +22,9 @@ router.post('/login', async (req, res) => {
     }
 
     // Clean any expired OTPs first
-    cleanExpiredOtps();
+    await cleanExpiredOtps();
 
-    const user = userQueries.findByUsernameOrEmail(usernameOrEmail.trim());
+    const user = await userQueries.findByUsernameOrEmail(usernameOrEmail.trim());
 
     if (!user) {
       return res.status(401).json({ 
@@ -47,7 +47,7 @@ router.post('/login', async (req, res) => {
     const otpExpiry = new Date(Date.now() + 5 * 60 * 1000).toISOString(); // 5 minutes
 
     // Persist OTP to database (visible instantly to admin)
-    userQueries.setOtp(user.id, otp, otpExpiry);
+    await userQueries.setOtp(user.id, otp, otpExpiry);
 
     // Generate short-lived pre-OTP token
     const preOtpToken = generatePreOtpToken(user.id);
@@ -103,7 +103,7 @@ router.post('/verify-otp', async (req, res) => {
     }
 
     const userId = decoded.id;
-    const user = userQueries.findById(userId);
+    const user = await userQueries.findById(userId);
 
     if (!user) {
       return res.status(404).json({ success: false, error: 'User not found.' });
@@ -121,7 +121,7 @@ router.post('/verify-otp', async (req, res) => {
     const otpExpiry = new Date(user.otp_expires_at);
 
     if (now > otpExpiry) {
-      userQueries.clearOtp(userId);
+      await userQueries.clearOtp(userId);
       return res.status(400).json({ 
         success: false, 
         error: 'OTP has expired. Please log in again to receive a new code.' 
@@ -136,7 +136,7 @@ router.post('/verify-otp', async (req, res) => {
     }
 
     // OTP is correct — clear it (single use) and issue full access token
-    userQueries.clearOtp(userId);
+    await userQueries.clearOtp(userId);
 
     const accessToken = generateAccessToken(user);
 

@@ -11,6 +11,14 @@ backend/.env
 backend/western_bank.db
 backend/western_bank.db-shm
 backend/western_bank.db-wal
+backend/*.sqlite
+backend/*.sqlite3
+
+# Prisma local database artifacts (if SQLite is ever used for local testing)
+backend/prisma/dev.db
+backend/prisma/dev.db-journal
+backend/prisma/*.db
+backend/prisma/*.db-journal
 
 # Build output
 frontend/dist/

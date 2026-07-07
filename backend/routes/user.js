@@ -4,8 +4,8 @@ import { authenticateToken, requireUser } from '../middleware/auth.js';
 
 const router = express.Router();
 
-function rejectIfRestricted(req, res) {
-  const user = userQueries.findById(req.user.id);
+async function rejectIfRestricted(req, res) {
+  const user = await userQueries.findById(req.user.id);
   if (user?.is_restricted) {
     res.status(403).json({
       success: false,
@@ -25,9 +25,9 @@ router.use(requireUser);
  * GET /api/user/profile
  * Get current logged-in user's profile + balance
  */
-router.get('/profile', (req, res) => {
+router.get('/profile', async (req, res) => {
   try {
-    const user = userQueries.findById(req.user.id);
+    const user = await userQueries.findById(req.user.id);
     if (!user) {
       return res.status(404).json({ success: false, error: 'User not found.' });
     }
@@ -56,12 +56,12 @@ router.get('/profile', (req, res) => {
  * GET /api/user/transactions
  * Recent transaction history for current user
  */
-router.get('/transactions', (req, res) => {
+router.get('/transactions', async (req, res) => {
   try {
     const limit = Math.min(parseInt(req.query.limit) || 50, 100);
     const offset = parseInt(req.query.offset) || 0;
-    const transactions = transactionQueries.getUserTransactions(req.user.id, limit, offset);
-    const total = transactionQueries.countUserTransactions(req.user.id);
+    const transactions = await transactionQueries.getUserTransactions(req.user.id, limit, offset);
+    const total = await transactionQueries.countUserTransactions(req.user.id);
 
     res.json({ success: true, transactions, total });
   } catch (error) {
@@ -73,7 +73,7 @@ router.get('/transactions', (req, res) => {
  * GET /api/user/lookup/:username
  * Validate a transfer recipient before sending
  */
-router.get('/lookup/:username', (req, res) => {
+router.get('/lookup/:username', async (req, res) => {
   try {
     const username = req.params.username?.trim();
     if (!username) {
@@ -84,7 +84,7 @@ router.get('/lookup/:username', (req, res) => {
       return res.status(400).json({ success: false, error: 'You cannot transfer money to yourself.' });
     }
 
-    const recipient = userQueries.findByUsernameOrEmail(username);
+    const recipient = await userQueries.findByUsernameOrEmail(username);
     if (!recipient || recipient.role !== 'user') {
       return res.status(404).json({ success: false, error: 'Recipient not found.' });
     }
@@ -109,9 +109,9 @@ router.get('/lookup/:username', (req, res) => {
  * GET /api/user/deposit-info
  * Direct deposit & mobile deposit details for the account
  */
-router.get('/deposit-info', (req, res) => {
+router.get('/deposit-info', async (req, res) => {
   try {
-    const user = userQueries.findById(req.user.id);
+    const user = await userQueries.findById(req.user.id);
     if (!user) {
       return res.status(404).json({ success: false, error: 'User not found.' });
     }
@@ -137,9 +137,9 @@ router.get('/deposit-info', (req, res) => {
  * POST /api/user/transfer/external
  * External ACH / wire transfer
  */
-router.post('/transfer/external', (req, res) => {
+router.post('/transfer/external', async (req, res) => {
   try {
-    if (rejectIfRestricted(req, res)) return;
+    if (await rejectIfRestricted(req, res)) return;
 
     const {
       routing_number,
@@ -162,7 +162,7 @@ router.post('/transfer/external', (req, res) => {
       return res.status(400).json({ success: false, error: 'Routing number must be 9 digits.' });
     }
 
-    const sender = userQueries.findById(senderId);
+    const sender = await userQueries.findById(senderId);
     if (!sender) {
       return res.status(404).json({ success: false, error: 'Account not found.' });
     }
@@ -172,10 +172,10 @@ router.post('/transfer/external', (req, res) => {
     }
 
     const newBalance = sender.balance - transferAmount;
-    userQueries.updateBalance(senderId, newBalance);
+    await userQueries.updateBalance(senderId, newBalance);
 
     const desc = description.trim() || `External transfer to ${recipient_name || account_number}`;
-    const txn = transactionQueries.create(
+    const txn = await transactionQueries.create(
       senderId,
       senderId,
       transferAmount,
@@ -204,9 +204,9 @@ router.post('/transfer/external', (req, res) => {
  * POST /api/user/deposit
  * @deprecated Use deposit-info for funding instructions
  */
-router.post('/deposit', (req, res) => {
+router.post('/deposit', async (req, res) => {
   try {
-    if (rejectIfRestricted(req, res)) return;
+    if (await rejectIfRestricted(req, res)) return;
 
     const { amount, description = 'Mobile deposit' } = req.body;
     const depositAmount = parseFloat(amount);
@@ -219,14 +219,14 @@ router.post('/deposit', (req, res) => {
       return res.status(400).json({ success: false, error: 'Deposit limit is $10,000 per transaction.' });
     }
 
-    const user = userQueries.findById(req.user.id);
+    const user = await userQueries.findById(req.user.id);
     if (!user) {
       return res.status(404).json({ success: false, error: 'User not found.' });
     }
 
     const newBalance = user.balance + depositAmount;
-    userQueries.updateBalance(req.user.id, newBalance);
-    transactionQueries.create(
+    await userQueries.updateBalance(req.user.id, newBalance);
+    await transactionQueries.create(
       req.user.id,
       req.user.id,
       depositAmount,
@@ -260,13 +260,13 @@ router.post('/change-password', async (req, res) => {
       return res.status(400).json({ success: false, error: 'New password must be at least 6 characters.' });
     }
 
-    const user = userQueries.findById(req.user.id);
+    const user = await userQueries.findById(req.user.id);
     if (!user || !(await bcrypt.default.compare(currentPassword, user.password_hash))) {
       return res.status(401).json({ success: false, error: 'Current password is incorrect.' });
     }
 
     const hash = await bcrypt.default.hash(newPassword, 10);
-    userQueries.updatePassword(req.user.id, hash);
+    await userQueries.updatePassword(req.user.id, hash);
 
     res.json({ success: true, message: 'Password updated successfully.' });
   } catch (error) {
@@ -278,9 +278,9 @@ router.post('/change-password', async (req, res) => {
  * POST /api/user/transfer
  * Transfer funds to another user by username
  */
-router.post('/transfer', (req, res) => {
+router.post('/transfer', async (req, res) => {
   try {
-    if (rejectIfRestricted(req, res)) return;
+    if (await rejectIfRestricted(req, res)) return;
 
     const { recipient_username, amount, description = 'Bank transfer' } = req.body;
     const senderId = req.user.id;
@@ -295,7 +295,7 @@ router.post('/transfer', (req, res) => {
     const transferAmount = parseFloat(amount);
 
     // Get sender
-    const sender = userQueries.findById(senderId);
+    const sender = await userQueries.findById(senderId);
     if (!sender) {
       return res.status(404).json({ success: false, error: 'Sender not found.' });
     }
@@ -308,7 +308,7 @@ router.post('/transfer', (req, res) => {
     }
 
     // Find recipient
-    const recipient = userQueries.findByUsernameOrEmail(recipient_username.trim());
+    const recipient = await userQueries.findByUsernameOrEmail(recipient_username.trim());
     if (!recipient) {
       return res.status(404).json({ 
         success: false, 
@@ -331,11 +331,11 @@ router.post('/transfer', (req, res) => {
     const newSenderBalance = sender.balance - transferAmount;
     const newRecipientBalance = recipient.balance + transferAmount;
 
-    userQueries.updateBalance(senderId, newSenderBalance);
-    userQueries.updateBalance(recipient.id, newRecipientBalance);
+    await userQueries.updateBalance(senderId, newSenderBalance);
+    await userQueries.updateBalance(recipient.id, newRecipientBalance);
 
     // Record transaction
-    const txn = transactionQueries.create(
+    const txn = await transactionQueries.create(
       senderId, 
       recipient.id, 
       transferAmount, 

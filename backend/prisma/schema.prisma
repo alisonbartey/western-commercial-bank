@@ -1,0 +1,47 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                     Int           @id @default(autoincrement())
+  username               String        @unique
+  email                  String        @unique
+  password_hash          String
+  role                   String        @default("user")
+  full_name              String?
+  balance                Float         @default(0)
+  current_otp            String?
+  otp_expires_at         DateTime?
+  created_at             DateTime      @default(now())
+  updated_at             DateTime      @updatedAt
+  account_number         String?       @unique
+  routing_number         String?       @default("121000248")
+  is_transfer_restricted Boolean       @default(false)
+  is_restricted          Boolean       @default(false)
+  managed_by_id          Int?
+  manager                User?         @relation("UserManager", fields: [managed_by_id], references: [id], onDelete: SetNull)
+  managed_users          User[]        @relation("UserManager")
+  transactions_from      Transaction[] @relation("TransactionFrom")
+  transactions_to        Transaction[] @relation("TransactionTo")
+}
+
+model Transaction {
+  id           Int      @id @default(autoincrement())
+  from_user_id Int
+  to_user_id   Int
+  amount       Float
+  description  String?
+  type         String   @default("transfer")
+  status       String?  @default("completed")
+  created_at   DateTime @default(now())
+  from_user    User     @relation("TransactionFrom", fields: [from_user_id], references: [id], onDelete: Cascade)
+  to_user      User     @relation("TransactionTo", fields: [to_user_id], references: [id], onDelete: Cascade)
+
+  @@index([from_user_id])
+  @@index([to_user_id])
+}

@@ -5,7 +5,7 @@ import dotenv from 'dotenv';
 import authRoutes from './routes/auth.js';
 import adminRoutes from './routes/admin.js';
 import userRoutes from './routes/user.js';
-import { cleanExpiredOtps } from './db.js';
+import { cleanExpiredOtps, initializeDatabase } from './db.js';
 
 dotenv.config();
 
@@ -103,11 +103,13 @@ app.use((err, req, res, next) => {
  * =========================
  */
 setInterval(() => {
-  try {
-    cleanExpiredOtps();
-  } catch (err) {
-    console.error('OTP cleanup error:', err);
-  }
+  (async () => {
+    try {
+      await cleanExpiredOtps();
+    } catch (err) {
+      console.error('OTP cleanup error:', err);
+    }
+  })();
 }, 2 * 60 * 1000);
 
 /**
@@ -115,8 +117,10 @@ setInterval(() => {
  * START SERVER (RENDER READY)
  * =========================
  */
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`
+async function startServer() {
+  await initializeDatabase();
+  app.listen(PORT, '0.0.0.0', () => {
+    console.log(`
 ╔══════════════════════════════════════╗
 ║   WESTERN COMMERCIAL BANK API       ║
 ╠══════════════════════════════════════╣
@@ -125,4 +129,10 @@ app.listen(PORT, '0.0.0.0', () => {
 ║  Status: Running
 ╚══════════════════════════════════════╝
   `);
+  });
+}
+
+startServer().catch((error) => {
+  console.error('Failed to start server:', error);
+  process.exit(1);
 });
